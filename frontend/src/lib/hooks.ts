@@ -1,10 +1,12 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   analyzeDiff,
+  generateReport,
   getGovernancePulse,
   getLineage,
   getRecentAnalyses,
 } from "@/lib/api";
+import type { BlastRadiusReport } from "@/types/api";
 
 export function useRecentAnalyses() {
   return useQuery({
@@ -37,5 +39,11 @@ export function useLineage(fqn: string) {
 export function useAnalyzeDiff() {
   return useMutation({
     mutationFn: (diff: string) => analyzeDiff(diff),
+  });
+}
+
+export function useGenerateReport() {
+  return useMutation({
+    mutationFn: (report: BlastRadiusReport) => generateReport(report),
   });
 }

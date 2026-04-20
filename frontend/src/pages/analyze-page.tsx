@@ -1,10 +1,13 @@
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
 import {
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
+  ClipboardCheck,
+  FileText,
   Loader2,
   ShieldAlert,
   Zap,
@@ -14,7 +17,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useAnalyzeDiff } from "@/lib/hooks";
+import { useAnalyzeDiff, useGenerateReport } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import type { AffectedAsset, BackendSeverity, BlastRadiusReport } from "@/types/api";
 
@@ -81,12 +84,99 @@ function AssetRow({ a }: { a: AffectedAsset }) {
   );
 }
 
-function ReportCard({ report }: { report: BlastRadiusReport }) {
+// ---------------------------------------------------------------------------
+// Markdown PR comment viewer
+// ---------------------------------------------------------------------------
+
+function PRCommentPreview({
+  markdown,
+  tokensUsed,
+  onCopy,
+}: {
+  markdown: string;
+  tokensUsed: number;
+  onCopy: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    navigator.clipboard.writeText(markdown).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      onCopy();
+    });
+  }
+
+  return (
+    <Card className="overflow-hidden">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between border-b border-border/60 bg-muted/30 px-5 py-3">
+        <div className="flex items-center gap-2">
+          <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            GitHub PR Comment Preview
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] text-muted-foreground">
+            {tokensUsed.toLocaleString()} tokens
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1.5 text-xs"
+            onClick={handleCopy}
+          >
+            <ClipboardCheck className="h-3 w-3" />
+            {copied ? "Copied!" : "Copy markdown"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Rendered markdown */}
+      <div className="p-6">
+        <div className="prose prose-sm prose-invert max-w-none
+          prose-headings:font-semibold prose-headings:tracking-tight
+          prose-h2:text-base prose-h3:text-sm
+          prose-code:rounded prose-code:bg-muted/60 prose-code:px-1 prose-code:py-0.5
+          prose-code:text-[11px] prose-code:font-mono prose-code:text-foreground
+          prose-pre:bg-muted/40 prose-pre:border prose-pre:border-border/60
+          prose-pre:text-[11px] prose-pre:leading-relaxed
+          prose-table:text-xs prose-td:py-2 prose-th:py-2
+          prose-blockquote:border-l-warning prose-blockquote:text-muted-foreground
+          prose-a:text-primary prose-a:no-underline hover:prose-a:underline">
+          <ReactMarkdown>{markdown}</ReactMarkdown>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Per-report card with "Generate Report" button
+// ---------------------------------------------------------------------------
+
+function ReportCard({
+  report,
+  index,
+  total,
+}: {
+  report: BlastRadiusReport;
+  index: number;
+  total: number;
+}) {
   const [jsonOpen, setJsonOpen] = useState(false);
+  const generateMutation = useGenerateReport();
   const sc = report.schema_change;
 
   return (
     <div className="space-y-4">
+      {total > 1 && (
+        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          Change {index + 1} of {total}
+        </p>
+      )}
+
       {/* Summary header */}
       <Card className="flex flex-wrap items-center justify-between gap-4 p-5">
         <div className="space-y-1">
@@ -177,6 +267,36 @@ function ReportCard({ report }: { report: BlastRadiusReport }) {
         )}
       </Card>
 
+      {/* Generate PR comment */}
+      <div className="flex items-center gap-3">
+        <Button
+          onClick={() => generateMutation.mutate(report)}
+          disabled={generateMutation.isPending}
+          variant="outline"
+          className="gap-2"
+        >
+          {generateMutation.isPending
+            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            : <FileText className="h-3.5 w-3.5" />}
+          {generateMutation.isPending ? "Generating…" : "Generate PR Comment"}
+        </Button>
+        {generateMutation.isSuccess && (
+          <span className="text-xs text-success">✓ Comment ready</span>
+        )}
+        {generateMutation.isError && (
+          <span className="text-xs text-destructive">Failed — is the backend running?</span>
+        )}
+      </div>
+
+      {/* Rendered PR comment */}
+      {generateMutation.data && (
+        <PRCommentPreview
+          markdown={generateMutation.data.markdown}
+          tokensUsed={generateMutation.data.tokens_used}
+          onCopy={() => {}}
+        />
+      )}
+
       {/* Collapsible JSON */}
       <div>
         <button
@@ -195,6 +315,10 @@ function ReportCard({ report }: { report: BlastRadiusReport }) {
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
 
 export function AnalyzePage() {
   const [diff, setDiff] = useState("");
@@ -216,7 +340,7 @@ export function AnalyzePage() {
       <PageHeader
         eyebrow="Analyze"
         title="Blast radius analysis"
-        description="Paste a SQL migration diff and get an instant impact report — affected assets, PII exposure, and migration hints."
+        description="Paste a SQL migration diff and get an instant impact report — affected assets, PII exposure, and a ready-to-post GitHub PR comment."
       />
 
       <Card className="space-y-4 p-6">
@@ -265,16 +389,9 @@ export function AnalyzePage() {
       )}
 
       {reports.length > 0 && (
-        <div className="space-y-8">
+        <div className="space-y-12">
           {reports.map((r, i) => (
-            <div key={i}>
-              {reports.length > 1 && (
-                <p className="mb-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                  Change {i + 1} of {reports.length}
-                </p>
-              )}
-              <ReportCard report={r} />
-            </div>
+            <ReportCard key={i} report={r} index={i} total={reports.length} />
           ))}
         </div>
       )}

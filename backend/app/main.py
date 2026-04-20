@@ -10,6 +10,7 @@ from app.api.assets import router as assets_router
 from app.clients.openmetadata import OpenMetadataClient
 from app.config import settings
 from app.engine.blast_radius import BlastRadiusEngine, BlastRadiusReport
+from app.llm.claude_reporter import ClaudeReporter
 from app.parsers.schema_diff import parse_schema_diff
 
 
@@ -98,3 +99,39 @@ async def analyze_diff(request: AnalyzeRequest) -> list[BlastRadiusReport]:
                     change.change_type, change.table, exc, exc_info=True,
                 )
     return reports
+
+
+# ---------------------------------------------------------------------------
+# Report endpoint — BlastRadiusReport → GitHub PR markdown comment
+# ---------------------------------------------------------------------------
+
+
+class ReportRequest(BaseModel):
+    report: BlastRadiusReport
+
+
+class ReportResponse(BaseModel):
+    markdown: str
+    tokens_used: int
+
+
+@app.post("/api/report", tags=["reporting"], response_model=ReportResponse)
+async def generate_report(request: ReportRequest) -> ReportResponse:
+    """
+    Convert a BlastRadiusReport into a formatted GitHub PR comment.
+
+    Body:
+      - report: a BlastRadiusReport object (output of /api/analyze)
+
+    Returns:
+      - markdown: ready-to-post GitHub PR comment string
+      - tokens_used: total Claude tokens consumed
+    """
+    reporter = ClaudeReporter()
+    try:
+        result = await reporter.agenerate(request.report)
+        return ReportResponse(markdown=result.markdown, tokens_used=result.tokens_used)
+    except Exception as exc:
+        import logging as _logging
+        _logging.getLogger(__name__).error("generate_report failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Claude reporter error: {exc}") from exc
