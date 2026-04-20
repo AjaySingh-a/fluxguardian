@@ -1,0 +1,41 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: fluxguardian-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      # OpenMetadata is assumed to run on the host. Resolve via the
+      # docker-provided gateway alias so backend → host loopback works
+      # consistently on Linux, macOS, and Windows.
+      OPENMETADATA_HOST: "http://host.docker.internal:8585"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "python -c \"import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)\""
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Browser → backend goes through the host port mapping above.
+        VITE_API_BASE_URL: "http://localhost:8000"
+    container_name: fluxguardian-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+# OpenMetadata runs externally (e.g. its own docker compose stack on
+# localhost:8585). Containers in this stack reach it via
+# host.docker.internal — see the backend `extra_hosts` entry above.
