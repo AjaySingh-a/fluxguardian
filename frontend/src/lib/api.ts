@@ -62,3 +62,10 @@ export async function analyzeDiff(diffText: string): Promise<BlastRadiusReport[]
   });
   return data;
 }
+
+export type ReportResponse = { markdown: string; tokens_used: number };
+
+export async function generateReport(report: BlastRadiusReport): Promise<ReportResponse> {
+  const { data } = await api.post<ReportResponse>("/api/report", { report });
+  return data;
+}
