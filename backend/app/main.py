@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.api.assets import router as assets_router
+from app.api.github_webhook import router as github_router
 from app.clients.openmetadata import OpenMetadataClient
 from app.config import settings
 from app.engine.blast_radius import BlastRadiusEngine, BlastRadiusReport
@@ -35,6 +36,7 @@ app.add_middleware(
 )
 
 app.include_router(assets_router)
+app.include_router(github_router)
 
 # ---------------------------------------------------------------------------
 # Meta endpoints
