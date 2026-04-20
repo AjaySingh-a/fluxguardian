@@ -15,11 +15,14 @@ class Settings(BaseSettings):
     openmetadata_host: str = "http://localhost:8585"
     openmetadata_jwt_token: str
 
-    # GitHub webhook (optional — not required for local dev)
+    # GitHub App (all optional — not required for local dev without webhook)
+    github_app_id: str | None = None
+    github_app_private_key_path: str | None = None   # path to .pem file on disk
     github_webhook_secret: str | None = None
 
     # App
     app_version: str = "0.1.0"
+    fluxguardian_env: str = "dev"   # "dev" | "prod"
 
 
 settings = Settings()  # type: ignore[call-arg]
