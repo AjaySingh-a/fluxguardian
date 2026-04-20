@@ -314,7 +314,7 @@ class OMClient:
     async def put(self, path: str, payload: dict) -> dict | None:
         r = await self.client.put(path, json=payload)
         if r.status_code in (200, 201):
-            return r.json()
+            return r.json() if r.content else {"ok": True}
         log.warning("PUT %s → %d %s", path, r.status_code, r.text[:300])
         return None
 
@@ -459,7 +459,7 @@ async def ensure_tables(om: OMClient) -> dict[str, dict]:
         fqn = f"{SCHEMA_FQN}.{table_name}"
         entity = await om.upsert(
             "/tables",
-            f"/tables/name/{fqn}?fields=columns,tags,owners,owner",
+            f"/tables/name/{fqn}?fields=columns,tags,owners",
             {
                 "name": table_name,
                 "databaseSchema": SCHEMA_FQN,
@@ -502,7 +502,7 @@ async def ensure_dashboards(om: OMClient) -> dict[str, dict]:
         fqn = f"{service_name}.{name}"
         entity = await om.upsert(
             "/dashboards",
-            f"/dashboards/name/{fqn}?fields=owners,owner",
+            f"/dashboards/name/{fqn}?fields=owners",
             {
                 "name": name,
                 "displayName": display,
@@ -524,7 +524,7 @@ async def ensure_mlmodels(om: OMClient) -> dict[str, dict]:
         fqn = f"{service_name}.{name}"
         entity = await om.upsert(
             "/mlmodels",
-            f"/mlmodels/name/{fqn}?fields=owners,owner",
+            f"/mlmodels/name/{fqn}?fields=owners",
             {
                 "name": name,
                 "displayName": display,
@@ -545,7 +545,7 @@ async def ensure_pipelines(om: OMClient) -> dict[str, dict]:
         fqn = f"{service_name}.{name}"
         entity = await om.upsert(
             "/pipelines",
-            f"/pipelines/name/{fqn}?fields=owners,owner",
+            f"/pipelines/name/{fqn}?fields=owners",
             {
                 "name": name,
                 "displayName": display,
@@ -779,11 +779,16 @@ async def ensure_lineage(
             continue
 
         payload: dict[str, Any] = {"edge": {"fromEntity": src, "toEntity": dst}}
-        if edge.columns and edge.src_kind == "table":
+        if edge.columns and edge.src_kind == "table" and edge.dst_kind == "table":
             src_fqn = f"{SCHEMA_FQN}.{edge.src_name}"
+            dst_fqn = f"{SCHEMA_FQN}.{edge.dst_name}"
             payload["edge"]["lineageDetails"] = {
                 "columnsLineage": [
-                    {"fromColumns": [f"{src_fqn}.{c}"]} for c in edge.columns
+                    {
+                        "fromColumns": [f"{src_fqn}.{c}"],
+                        "toColumn": f"{dst_fqn}.{c}",
+                    }
+                    for c in edge.columns
                 ],
             }
         if await om.put("/lineage", payload):

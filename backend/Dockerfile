@@ -5,14 +5,12 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-# Copy dependency manifests first for layer caching
-COPY pyproject.toml .
+# Copy dependency manifests and source
+COPY pyproject.toml README.md ./
+COPY app/ app/
 
 # Install production dependencies only (no dev extras)
-RUN uv pip install --system --no-cache -e .
-
-# Copy application source
-COPY app/ app/
+RUN uv pip install --system --no-cache .
 
 EXPOSE 8000
 
