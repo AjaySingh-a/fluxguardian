@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Activity,
+  AlertCircle,
   AlertTriangle,
   ArrowRight,
   ArrowUpRight,
@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useGovernancePulse, useRecentAnalyses } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import {
   GOVERNANCE_PULSE,
@@ -30,6 +31,7 @@ import {
   type HeroStat,
   type Severity,
 } from "@/lib/mock-data";
+import type { GovernancePulse } from "@/types/api";
 
 const HERO_ICONS: Record<string, LucideIcon> = {
   "prs-today": Activity,
@@ -57,14 +59,6 @@ const SEVERITY_BADGE: Record<
   },
 };
 
-function useFakeLoad(ms = 350): boolean {
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    const t = window.setTimeout(() => setLoading(false), ms);
-    return () => window.clearTimeout(t);
-  }, [ms]);
-  return loading;
-}
 
 // ---------------------------------------------------------------------------
 // Hero stat card
@@ -133,21 +127,6 @@ function HeroStatCard({ stat }: { stat: HeroStat }) {
             ) : null}
           </div>
         ) : null}
-      </div>
-    </Card>
-  );
-}
-
-function HeroStatSkeleton() {
-  return (
-    <Card className="flex flex-col justify-between gap-6 p-6">
-      <div className="flex justify-between">
-        <Skeleton className="h-3 w-24" />
-        <Skeleton className="h-7 w-7 rounded-md" />
-      </div>
-      <div className="space-y-2">
-        <Skeleton className="h-8 w-24" />
-        <Skeleton className="h-3 w-32" />
       </div>
     </Card>
   );
@@ -276,7 +255,15 @@ function PRAnalysisSkeleton() {
 // Governance pulse sidebar
 // ---------------------------------------------------------------------------
 
-function GovernancePulse() {
+function GovernancePulseCard({ live }: { live?: GovernancePulse }) {
+  const items = live
+    ? [
+        { id: "untagged-pii",     label: "Untagged PII Columns",     value: live.untagged_pii,    hint: "in users, deliveries" },
+        { id: "no-owners",        label: "Assets Without Owners",    value: live.assets_no_owner, hint: "across 4 services" },
+        { id: "orphaned-lineage", label: "Orphaned Lineage Nodes",   value: live.orphaned_nodes,  hint: "no upstream source" },
+      ]
+    : GOVERNANCE_PULSE;
+
   return (
     <Card className="sticky top-20 flex flex-col gap-5 p-6">
       <div className="flex items-center justify-between">
@@ -292,7 +279,7 @@ function GovernancePulse() {
       </div>
 
       <div className="space-y-2">
-        {GOVERNANCE_PULSE.map((g) => (
+        {items.map((g) => (
           <div
             key={g.id}
             className="flex items-baseline justify-between rounded-lg border border-border/60 bg-background/40 p-3"
@@ -339,10 +326,22 @@ function GovernancePulseSkeleton() {
 // ---------------------------------------------------------------------------
 
 export function HomePage() {
-  const loading = useFakeLoad();
+  const analysesQuery = useRecentAnalyses();
+  const pulseQuery = useGovernancePulse();
+
+  const backendDown = analysesQuery.isError || pulseQuery.isError;
+  const analyses = analysesQuery.data ?? (analysesQuery.isError ? RECENT_ANALYSES : undefined);
+  const loading = analysesQuery.isLoading || pulseQuery.isLoading;
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-6 py-10">
+      {backendDown && (
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive-foreground">
+          <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
+          Backend unreachable — showing cached demo data
+        </div>
+      )}
+
       <PageHeader
         eyebrow="Overview"
         title="Schema activity at a glance"
@@ -351,9 +350,7 @@ export function HomePage() {
 
       {/* Hero stats */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {loading
-          ? HERO_STATS.map((s) => <HeroStatSkeleton key={s.id} />)
-          : HERO_STATS.map((s) => <HeroStatCard key={s.id} stat={s} />)}
+        {HERO_STATS.map((s) => <HeroStatCard key={s.id} stat={s} />)}
       </section>
 
       {/* Main grid: feed + pulse */}
@@ -378,14 +375,18 @@ export function HomePage() {
               ? Array.from({ length: 4 }).map((_, i) => (
                   <PRAnalysisSkeleton key={i} />
                 ))
-              : RECENT_ANALYSES.map((a) => (
+              : (analyses ?? RECENT_ANALYSES).map((a) => (
                   <PRAnalysisCard key={a.id} analysis={a} />
                 ))}
           </div>
         </section>
 
         <aside className="lg:col-span-1">
-          {loading ? <GovernancePulseSkeleton /> : <GovernancePulse />}
+          {pulseQuery.isLoading ? (
+            <GovernancePulseSkeleton />
+          ) : (
+            <GovernancePulseCard live={pulseQuery.data} />
+          )}
         </aside>
       </div>
     </div>

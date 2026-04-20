@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Activity, GitPullRequest, Network, Shield } from "lucide-react";
+import { Activity, GitPullRequest, Network, Shield, Zap } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -8,6 +8,7 @@ const navItems = [
   { to: "/", label: "Overview", icon: Activity, end: true },
   { to: "/lineage", label: "Lineage", icon: Network },
   { to: "/governance", label: "Governance", icon: Shield },
+  { to: "/analyze", label: "Analyze", icon: Zap },
 ];
 
 export function MainLayout() {

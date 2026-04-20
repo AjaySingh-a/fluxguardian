@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from app.api.assets import router as assets_router
 from app.clients.openmetadata import OpenMetadataClient
 from app.config import settings
 from app.engine.blast_radius import BlastRadiusEngine, BlastRadiusReport
@@ -26,12 +27,13 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "http://localhost:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+app.include_router(assets_router)
 
 # ---------------------------------------------------------------------------
 # Meta endpoints

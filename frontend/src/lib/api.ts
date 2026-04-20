@@ -1,4 +1,10 @@
 import axios from "axios";
+import type {
+  AnalysisCard,
+  BlastRadiusReport,
+  GovernancePulse,
+  LineageGraph,
+} from "@/types/api";
 
 const baseURL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
@@ -32,5 +38,27 @@ export async function getHealth() {
 
 export async function getVersion() {
   const { data } = await api.get<VersionResponse>("/version");
+  return data;
+}
+
+export async function getRecentAnalyses(): Promise<AnalysisCard[]> {
+  const { data } = await api.get<AnalysisCard[]>("/api/pr/recent");
+  return data;
+}
+
+export async function getGovernancePulse(): Promise<GovernancePulse> {
+  const { data } = await api.get<GovernancePulse>("/api/governance/pulse");
+  return data;
+}
+
+export async function getLineage(fqn: string): Promise<LineageGraph> {
+  const { data } = await api.get<LineageGraph>(`/api/assets/${fqn}/lineage`);
+  return data;
+}
+
+export async function analyzeDiff(diffText: string): Promise<BlastRadiusReport[]> {
+  const { data } = await api.post<BlastRadiusReport[]>("/api/analyze", {
+    diff: diffText,
+  });
   return data;
 }
