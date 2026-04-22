@@ -2,8 +2,10 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+import re
+
+from fastapi import FastAPI, HTTPException, Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel
 
 from app.api.assets import router as assets_router
@@ -28,18 +30,39 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:8000",
-        "https://frontend-eight-theta-35.vercel.app",
-        "https://*.vercel.app",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+_VERCEL_ORIGIN_RE = re.compile(r"https://[a-z0-9-]+\.vercel\.app$")
+
+_ALLOWED_ORIGINS = {
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "https://frontend-eight-theta-35.vercel.app",
+}
+
+
+class DynamicCORSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        origin = request.headers.get("origin", "")
+        allowed = origin in _ALLOWED_ORIGINS or bool(_VERCEL_ORIGIN_RE.match(origin))
+
+        if request.method == "OPTIONS":
+            headers = {
+                "Access-Control-Allow-Origin": origin if allowed else "",
+                "Access-Control-Allow-Methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+                "Access-Control-Allow-Headers": "*",
+                "Access-Control-Allow-Credentials": "true",
+                "Access-Control-Max-Age": "600",
+            }
+            return Response(status_code=200, headers=headers)
+
+        response = await call_next(request)
+        if allowed:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Vary"] = "Origin"
+        return response
+
+
+app.add_middleware(DynamicCORSMiddleware)
 
 app.include_router(assets_router)
 app.include_router(github_webhook.router)
