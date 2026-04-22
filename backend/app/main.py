@@ -7,12 +7,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.api.assets import router as assets_router
-from app.api.github_webhook import router as github_router
+
 from app.clients.openmetadata import OpenMetadataClient
 from app.config import settings
 from app.engine.blast_radius import BlastRadiusEngine, BlastRadiusReport
 from app.llm.claude_reporter import ClaudeReporter
 from app.parsers.schema_diff import parse_schema_diff
+from app.api import github_webhook
 
 
 @asynccontextmanager
@@ -29,14 +30,20 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "https://frontend-eight-theta-35.vercel.app",
+        "https://*.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 app.include_router(assets_router)
-app.include_router(github_router)
+app.include_router(github_webhook.router)
+
 
 # ---------------------------------------------------------------------------
 # Meta endpoints
