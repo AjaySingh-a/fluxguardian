@@ -110,31 +110,36 @@ class TestSignatureVerification:
 # ---------------------------------------------------------------------------
 
 class TestEventFiltering:
-    def _post(self, event: str, action: str) -> dict:
+    def _post(self, event: str, action: str, monkeypatch: pytest.MonkeyPatch) -> dict:
+        monkeypatch.setattr("app.api.github_webhook.settings.github_webhook_secret", _WEBHOOK_SECRET)
         payload = _pr_payload(action=action)
         body    = json.dumps(payload).encode()
         resp = client.post(
             "/api/github/webhook",
             content=body,
-            headers={"X-GitHub-Event": event, "Content-Type": "application/json"},
+            headers={
+                "X-GitHub-Event": event,
+                "Content-Type": "application/json",
+                "X-Hub-Signature-256": _sign(body),
+            },
         )
         assert resp.status_code == 200
         return resp.json()
 
-    def test_push_event_ignored(self) -> None:
-        data = self._post("push", "opened")
+    def test_push_event_ignored(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        data = self._post("push", "opened", monkeypatch)
         assert data["status"] == "ignored"
 
-    def test_pr_closed_ignored(self) -> None:
-        data = self._post("pull_request", "closed")
+    def test_pr_closed_ignored(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        data = self._post("pull_request", "closed", monkeypatch)
         assert data["status"] == "ignored"
 
-    def test_pr_opened_accepted(self) -> None:
-        data = self._post("pull_request", "opened")
+    def test_pr_opened_accepted(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        data = self._post("pull_request", "opened", monkeypatch)
         assert data["status"] == "accepted"
 
-    def test_pr_synchronize_accepted(self) -> None:
-        data = self._post("pull_request", "synchronize")
+    def test_pr_synchronize_accepted(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        data = self._post("pull_request", "synchronize", monkeypatch)
         assert data["status"] == "accepted"
 
 

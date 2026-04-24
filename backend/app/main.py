@@ -1,15 +1,14 @@
+import logging
+import re
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
-
-import re
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel
 
 from app.api.assets import router as assets_router
-
 from app.clients.openmetadata import OpenMetadataClient
 from app.config import settings
 from app.engine.blast_radius import BlastRadiusEngine, BlastRadiusReport
@@ -17,10 +16,19 @@ from app.llm.claude_reporter import ClaudeReporter
 from app.parsers.schema_diff import parse_schema_diff
 from app.api import github_webhook
 
+logger = logging.getLogger(__name__)
+
+logging.basicConfig(
+    level=getattr(logging, settings.log_level.upper(), logging.INFO),
+    format="%(asctime)s %(levelname)s %(name)s — %(message)s",
+)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    logger.info("FluxGuardian %s starting (env=%s)", settings.app_version, settings.fluxguardian_env)
     yield
+    logger.info("FluxGuardian shutting down")
 
 
 app = FastAPI(
@@ -32,11 +40,19 @@ app = FastAPI(
 
 _VERCEL_ORIGIN_RE = re.compile(r"https://[a-z0-9-]+\.vercel\.app$")
 
-_ALLOWED_ORIGINS = {
+# Base allowed origins — always included
+_ALLOWED_ORIGINS: set[str] = {
     "http://localhost:3000",
+    "http://localhost:5173",
     "http://localhost:8000",
-    "https://frontend-eight-theta-35.vercel.app",
 }
+
+# Merge in any extra origins from settings (comma-separated env var)
+if settings.cors_allowed_origins:
+    for _origin in settings.cors_allowed_origins.split(","):
+        _o = _origin.strip()
+        if _o:
+            _ALLOWED_ORIGINS.add(_o)
 
 
 class DynamicCORSMiddleware(BaseHTTPMiddleware):
@@ -123,10 +139,7 @@ async def analyze_diff(request: AnalyzeRequest) -> list[BlastRadiusReport]:
                 )
                 reports.append(report)
             except Exception as exc:
-                # Log and skip individual failures so one bad change doesn't
-                # block the entire response.
-                import logging
-                logging.getLogger(__name__).error(
+                logger.error(
                     "analyze failed for change %s on %s: %s",
                     change.change_type, change.table, exc, exc_info=True,
                 )
@@ -164,6 +177,5 @@ async def generate_report(request: ReportRequest) -> ReportResponse:
         result = await reporter.agenerate(request.report)
         return ReportResponse(markdown=result.markdown, tokens_used=result.tokens_used)
     except Exception as exc:
-        import logging as _logging
-        _logging.getLogger(__name__).error("generate_report failed: %s", exc, exc_info=True)
+        logger.error("generate_report failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Claude reporter error: {exc}") from exc

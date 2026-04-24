@@ -41,8 +41,14 @@ export async function getVersion() {
   return data;
 }
 
-export async function getRecentAnalyses(): Promise<AnalysisCard[]> {
-  const { data } = await api.get<AnalysisCard[]>("/api/pr/recent");
+export type RecentAnalysesResponse = {
+  analyses: AnalysisCard[];
+  total: number;
+  source: "demo" | "live";
+};
+
+export async function getRecentAnalyses(): Promise<RecentAnalysesResponse> {
+  const { data } = await api.get<RecentAnalysesResponse>("/api/pr/recent");
   return data;
 }
 

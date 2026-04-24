@@ -27,11 +27,9 @@ import {
   RECENT_ANALYSES,
   formatStatValue,
   relativeTime,
-  type AnalysisCard,
   type HeroStat,
-  type Severity,
 } from "@/lib/mock-data";
-import type { GovernancePulse } from "@/types/api";
+import type { AnalysisCard, GovernancePulse, Severity } from "@/types/api";
 
 const HERO_ICONS: Record<string, LucideIcon> = {
   "prs-today": Activity,
@@ -330,7 +328,9 @@ export function HomePage() {
   const pulseQuery = useGovernancePulse();
 
   const backendDown = analysesQuery.isError || pulseQuery.isError;
-  const analyses = analysesQuery.data ?? (analysesQuery.isError ? RECENT_ANALYSES : undefined);
+  const analyses: AnalysisCard[] =
+    analysesQuery.data?.analyses ?? (analysesQuery.isError ? RECENT_ANALYSES : []);
+  const feedSource = analysesQuery.data?.source;
   const loading = analysesQuery.isLoading || pulseQuery.isLoading;
 
   return (
@@ -357,9 +357,16 @@ export function HomePage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <section className="space-y-4 lg:col-span-2">
           <div className="flex items-center justify-between">
-            <h2 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              Recent Analyses
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                Recent Analyses
+              </h2>
+              {feedSource === "demo" && !backendDown && (
+                <span className="rounded border border-border/60 px-1.5 py-0.5 text-[10px] text-muted-foreground/70">
+                  seeded demo
+                </span>
+              )}
+            </div>
             <Button
               variant="ghost"
               size="sm"
