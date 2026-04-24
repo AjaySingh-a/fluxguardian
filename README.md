@@ -304,7 +304,7 @@ ngrok http 8000
 
 - **Repository:** https://github.com/AjaySingh-a/fluxguardian
 - **Live Demo PR:** https://github.com/Devgr72/fluxguardian-demo/pull/6
-- **Frontend (Deployed):** https://fluxguardian.vercel.app
+- **Frontend (Deployed):** https://frontend-eight-theta-35.vercel.app/
 - **OpenMetadata:** https://open-metadata.org
 - **Hackathon:** https://www.wemakedevs.org/hackathons/openmetadata
 
