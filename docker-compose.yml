@@ -8,12 +8,14 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      # OpenMetadata is assumed to run on the host. Resolve via the
-      # docker-provided gateway alias so backend → host loopback works
-      # consistently on Linux, macOS, and Windows.
+      # OpenMetadata on host — resolved via Docker Desktop gateway
       OPENMETADATA_HOST: "http://host.docker.internal:8585"
+      # PEM file is bind-mounted from host SSH dir below
+      GITHUB_APP_PRIVATE_KEY_PATH: "/run/secrets/fluxguardian.pem"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - ~/.ssh/fluxguardian.pem:/run/secrets/fluxguardian.pem:ro
     restart: unless-stopped
     healthcheck:
       test:

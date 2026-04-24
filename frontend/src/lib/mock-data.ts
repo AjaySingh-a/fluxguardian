@@ -1,29 +1,5 @@
-export type Severity = "safe" | "breaking" | "warning";
-
-export type Owner = {
-  id: string;
-  name: string;
-  role: string;
-};
-
-export type ColumnRef = {
-  table: string;
-  column: string;
-};
-
-export type AnalysisCard = {
-  id: string;
-  prNumber: number;
-  repo: string;
-  title: string;
-  severity: Severity;
-  columnsAffected: ColumnRef[];
-  downstreamCount: number;
-  downstreamSummary: string;
-  owners: Owner[];
-  createdAt: string; // ISO
-  author: string;
-};
+export type { AnalysisCard, Owner, ColumnRef, Severity } from "@/types/api";
+import type { AnalysisCard, Owner } from "@/types/api";
 
 export type HeroStat = {
   id: string;

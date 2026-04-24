@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from datetime import datetime
 
 import anthropic
 
+from app.config import settings
 from app.engine.blast_radius import AffectedAsset, BlastRadiusReport
 
 logger = logging.getLogger(__name__)
@@ -27,8 +27,7 @@ _MODEL_PROD = "claude-sonnet-4-5"
 _MODEL_DEV  = "claude-haiku-4-5-20251001"
 
 def _model() -> str:
-    env = os.getenv("FLUXGUARDIAN_ENV", "dev").lower()
-    return _MODEL_PROD if env == "prod" else _MODEL_DEV
+    return _MODEL_PROD if settings.fluxguardian_env.lower() == "prod" else _MODEL_DEV
 
 
 # ---------------------------------------------------------------------------
@@ -213,7 +212,7 @@ class ClaudeReporter:
 
     def __init__(self, api_key: str | None = None, model: str | None = None) -> None:
         self._client = anthropic.Anthropic(
-            api_key=api_key or os.getenv("ANTHROPIC_API_KEY"),
+            api_key=api_key or settings.anthropic_api_key,
         )
         self._model = model or _model()
 

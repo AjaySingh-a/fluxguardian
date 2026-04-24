@@ -457,9 +457,14 @@ async def get_table_schema(
 
 
 @router.get("/pr/recent")
-async def get_recent_prs() -> list[dict[str, Any]]:
-    """Recent PR analyses for the home page feed."""
-    return _RECENT_PRS
+async def get_recent_prs() -> dict[str, Any]:
+    """Recent PR analyses for the home page feed.
+
+    Returns seeded FoodieExpress demo data. Real analyses are posted
+    as GitHub PR comments via the webhook pipeline; there is no
+    database to query yet.
+    """
+    return {"analyses": _RECENT_PRS, "total": len(_RECENT_PRS), "source": "demo"}
 
 
 @router.get("/pr/{pr_id}")
@@ -467,7 +472,7 @@ async def get_pr_detail(pr_id: str) -> dict[str, Any]:
     """Return a single PR analysis by ID."""
     for pr in _RECENT_PRS:
         if pr["id"] == pr_id:
-            return pr
+            return {**pr, "source": "demo"}
     return {"error": "PR not found", "id": pr_id}
 
 
