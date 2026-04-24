@@ -310,6 +310,41 @@ ngrok http 8000
 
 ---
 
+## 🤖 AI-Assisted Development
+
+In the spirit of transparency required by the hackathon, we want to be clear about how AI tools were used in building FluxGuardian:
+
+### Tools Used
+
+| Tool | Purpose |
+|---|---|
+| **Claude (Anthropic)** | Architecture planning, code review, debugging assistance, documentation polish |
+| **Claude Code** | Test scaffolding, refactoring, production-ready cleanup |
+| **GitHub Copilot** | Inline code suggestions during development |
+
+### How We Used AI Responsibly
+
+- **Architecture & Logic** — All design decisions, integration patterns, and product strategy were human-driven. AI was used as a thinking partner.
+- **Code Generation** — AI accelerated boilerplate (test setup, type definitions, error handling). Every generated line was reviewed, tested, and adapted.
+- **Debugging** — AI helped diagnose tricky bugs (Python 3.13 IPv6 resolution, JWT signature edge cases, OpenMetadata API quirks).
+- **Documentation** — README polish and SETUP.md walkthrough were drafted with AI assistance, then refined with our voice.
+- **Testing** — 181 tests were written with AI scaffolding, then validated against real OpenMetadata responses.
+
+### What AI Did NOT Do
+
+- ❌ Make product decisions (multi-surface architecture, OpenMetadata integration depth)
+- ❌ Generate fake/placeholder content (every demo PR is real, every screenshot is from running code)
+- ❌ Write code that wasn't reviewed and understood by humans
+- ❌ Replace our judgment on what features to ship
+
+### Why We Embrace AI Transparency
+
+We believe AI-assisted development is the future of engineering — and that future demands radical transparency. FluxGuardian itself is an AI-powered tool (uses Claude to generate PR comments). It would be inconsistent to hide AI usage in our own development process.
+
+**Built by humans, accelerated by AI, owned end-to-end by the team.**
+
+---
+
 ## 📄 License
 
 MIT License — See [LICENSE](./LICENSE)
